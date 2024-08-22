@@ -2,6 +2,7 @@ use std::io::{self, BufWriter, Write};
 use std::ops::Range;
 
 use common::{CountingWriter, OwnedBytes};
+#[cfg(compress)]
 use zstd::bulk::Compressor;
 
 use super::value::ValueWriter;
@@ -12,7 +13,8 @@ const VINT_MODE: u8 = 1u8;
 const BLOCK_LEN: usize = 4_000;
 
 pub struct DeltaWriter<W, TValueWriter>
-where W: io::Write
+where
+    W: io::Write,
 {
     block: Vec<u8>,
     write: CountingWriter<BufWriter<W>>,
@@ -57,9 +59,18 @@ where
             buffer.extend_from_slice(&self.block);
             self.block.clear();
 
-            let max_len = zstd::zstd_safe::compress_bound(buffer.len());
-            self.block.reserve(max_len);
-            Compressor::new(3)?.compress_to_buffer(buffer, &mut self.block)?;
+            #[cfg(compress)]
+            {
+                let max_len = zstd::zstd_safe::compress_bound(buffer.len());
+                self.block.reserve(max_len);
+                Compressor::new(3)?.compress_to_buffer(buffer, &mut self.block)?;
+            }
+            #[cfg(not(compress))]
+            {
+                let max_len = buffer.len();
+                self.block.reserve(max_len);
+                std::io::Write::write_all(&mut self.block, buffer)?;
+            }
 
             // verify compression had a positive impact
             if self.block.len() < buffer.len() {
@@ -131,7 +142,8 @@ pub struct DeltaReader<TValueReader> {
 }
 
 impl<TValueReader> DeltaReader<TValueReader>
-where TValueReader: value::ValueReader
+where
+    TValueReader: value::ValueReader,
 {
     pub fn new(reader: OwnedBytes) -> Self {
         DeltaReader {

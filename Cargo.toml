@@ -85,7 +85,7 @@ more-asserts = "0.3.1"
 rand_distr = "0.4.3"
 time = { version = "0.3.10", features = ["serde-well-known", "macros"] }
 postcard = { version = "1.0.4", features = [
-  "use-std",
+    "use-std",
 ], default-features = false }
 
 [target.'cfg(not(windows))'.dev-dependencies]
@@ -110,9 +110,10 @@ debug-assertions = true
 overflow-checks = true
 
 [features]
-default = ["mmap", "stopwords", "lz4-compression"]
+default = ["fs", "stopwords"]
 mmap = ["fs4", "tempfile", "memmap2"]
 stopwords = []
+fs = ["tempfile"]
 
 lz4-compression = ["lz4_flex"]
 zstd-compression = ["zstd"]

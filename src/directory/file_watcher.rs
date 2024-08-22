@@ -102,7 +102,11 @@ mod tests {
     use std::mem;
 
     use super::*;
+    #[cfg(feature = "mmap")]
     use crate::directory::mmap_directory::atomic_write;
+
+    #[cfg(feature = "fs")]
+    use crate::directory::fs_directory::atomic_write;
 
     #[test]
     fn test_file_watcher_drop_watcher() -> crate::Result<()> {
