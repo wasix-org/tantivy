@@ -3,6 +3,9 @@
 #[cfg(feature = "mmap")]
 mod mmap_directory;
 
+#[cfg(feature = "fs")]
+mod fs_directory;
+
 mod directory;
 mod directory_lock;
 mod file_watcher;
@@ -48,6 +51,8 @@ pub use memmap2::Advice;
 pub use self::managed_directory::ManagedDirectory;
 #[cfg(feature = "mmap")]
 pub use self::mmap_directory::MmapDirectory;
+#[cfg(feature = "fs")]
+pub use self::fs_directory::FsDirectory;
 
 /// Write object for Directory.
 ///

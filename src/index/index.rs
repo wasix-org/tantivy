@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fmt;
-#[cfg(feature = "mmap")]
+#[cfg(any(feature = "mmap", feature = "fs"))]
 use std::path::Path;
 use std::path::PathBuf;
 use std::thread::available_parallelism;
@@ -12,6 +12,8 @@ use crate::core::{Executor, META_FILEPATH};
 use crate::directory::error::OpenReadError;
 #[cfg(feature = "mmap")]
 use crate::directory::MmapDirectory;
+#[cfg(feature = "fs")]
+use crate::directory::FsDirectory;
 use crate::directory::{Directory, ManagedDirectory, RamDirectory, INDEX_WRITER_LOCK};
 use crate::error::{DataCorruption, TantivyError};
 use crate::index::{IndexMeta, SegmentId, SegmentMeta, SegmentMetaInventory};
@@ -167,6 +169,20 @@ impl IndexBuilder {
     #[cfg(feature = "mmap")]
     pub fn create_in_dir<P: AsRef<Path>>(self, directory_path: P) -> crate::Result<Index> {
         let mmap_directory: Box<dyn Directory> = Box::new(MmapDirectory::open(directory_path)?);
+        if Index::exists(&*mmap_directory)? {
+            return Err(TantivyError::IndexAlreadyExists);
+        }
+        self.create(mmap_directory)
+    }
+
+    /// Creates a new index in a given filepath.
+    /// The index will use the [`FsDirectory`].
+    ///
+    /// If a previous index was in this directory, it returns an
+    /// [`TantivyError::IndexAlreadyExists`] error.
+    #[cfg(feature = "fs")]
+    pub fn create_in_dir<P: AsRef<Path>>(self, directory_path: P) -> crate::Result<Index> {
+        let mmap_directory: Box<dyn Directory> = Box::new(FsDirectory::open(directory_path)?);
         if Index::exists(&*mmap_directory)? {
             return Err(TantivyError::IndexAlreadyExists);
         }
@@ -329,7 +345,7 @@ impl Index {
     ///
     /// If a previous index was in this directory, then it returns
     /// a [`TantivyError::IndexAlreadyExists`] error.
-    #[cfg(feature = "mmap")]
+    #[cfg(any(feature = "mmap", feature = "fs"))]
     pub fn create_in_dir<P: AsRef<Path>>(
         directory_path: P,
         schema: Schema,
@@ -464,6 +480,13 @@ impl Index {
     pub fn open_in_dir<P: AsRef<Path>>(directory_path: P) -> crate::Result<Index> {
         let mmap_directory = MmapDirectory::open(directory_path)?;
         Index::open(mmap_directory)
+    }
+
+    /// Opens a new directory from an index path.
+    #[cfg(feature = "fs")]
+    pub fn open_in_dir<P: AsRef<Path>>(directory_path: P) -> crate::Result<Index> {
+        let fs_directory = FsDirectory::open(directory_path)?;
+        Index::open(fs_directory)
     }
 
     /// Returns the list of the segment metas tracked by the index.
